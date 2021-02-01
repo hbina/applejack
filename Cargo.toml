@@ -11,6 +11,3 @@ description = "Simple implementation of Radix tree"
 
 [dependencies]
 smallvec = "1.6.1"
-
-[dev.dependencies]
-smallvec = "1.6.1"
