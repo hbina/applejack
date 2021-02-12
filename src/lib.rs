@@ -107,9 +107,9 @@ impl<T> TrieNode<T> {
                 Cut::BothMiddle(idx)
             }
         } else {
-            let (plen, clen) = (self.prefix.len(), child_key.len());
-            match plen.cmp(&clen) {
-                std::cmp::Ordering::Less => Cut::Child(plen),
+            let (llen, clen) = (self.prefix.len(), child_key.len());
+            match llen.cmp(&clen) {
+                std::cmp::Ordering::Less => Cut::Child(llen),
                 std::cmp::Ordering::Equal => Cut::BothEnd,
                 std::cmp::Ordering::Greater => Cut::Parent(clen),
             }
@@ -311,6 +311,4 @@ fn get_nested_exists() {
 #[test]
 fn assert_size_of_node() {
     assert_eq!(48, std::mem::size_of::<TrieNode<()>>());
-    assert_eq!(8, std::mem::size_of::<usize>());
-    assert_eq!(56, std::mem::size_of::<TrieNode<usize>>());
 }
