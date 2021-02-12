@@ -16,7 +16,7 @@ enum Cut {
 pub struct TrieNode<T> {
     pub(crate) value: Option<T>,
     pub(crate) prefix: Key,
-    pub(crate) branches: MiniVec<TrieNode<T>>,
+    pub(crate) branches: Vec<TrieNode<T>>,
 }
 
 impl<T> Default for TrieNode<T> {
@@ -24,7 +24,7 @@ impl<T> Default for TrieNode<T> {
         TrieNode {
             value: None,
             prefix: smallvec![],
-            branches: mini_vec![],
+            branches: vec![],
         }
     }
 }
@@ -59,7 +59,7 @@ impl<T> TrieNode<T> {
                     self.branches.push(TrieNode {
                         value: value.take(),
                         prefix: Key::from(cut_child),
-                        branches: mini_vec![],
+                        branches: vec![],
                     });
                 }
                 true
@@ -77,7 +77,7 @@ impl<T> TrieNode<T> {
                 self.branches.push(TrieNode {
                     value: value.take(),
                     prefix: Key::from(&new_key[p..]),
-                    branches: mini_vec![],
+                    branches: vec![],
                 });
                 true
             }
@@ -135,23 +135,23 @@ fn general_tests() {
         TrieNode {
             value: Some(()),
             prefix: smallvec![],
-            branches: mini_vec![TrieNode {
+            branches: vec![TrieNode {
                 value: None,
                 prefix: smallvec![0, 1],
-                branches: mini_vec![
+                branches: vec![
                     TrieNode {
                         value: Some(()),
                         prefix: smallvec![2],
-                        branches: mini_vec![TrieNode {
+                        branches: vec![TrieNode {
                             value: Some(()),
                             prefix: smallvec![3, 4],
-                            branches: mini_vec![]
+                            branches: vec![]
                         },]
                     },
                     TrieNode {
                         value: Some(()),
                         prefix: smallvec![3],
-                        branches: mini_vec![]
+                        branches: vec![]
                     }
                 ]
             },]
@@ -175,16 +175,16 @@ fn insert_empty() {
         TrieNode {
             value: Some(()),
             prefix: smallvec![],
-            branches: mini_vec![TrieNode {
+            branches: vec![TrieNode {
                 value: Some(()),
                 prefix: smallvec![0, 1, 2],
-                branches: mini_vec![TrieNode {
+                branches: vec![TrieNode {
                     value: Some(()),
                     prefix: smallvec![3, 4],
-                    branches: mini_vec![TrieNode {
+                    branches: vec![TrieNode {
                         value: Some(()),
                         prefix: smallvec![5, 6],
-                        branches: mini_vec![]
+                        branches: vec![]
                     }]
                 }]
             },]
@@ -202,16 +202,16 @@ fn insert_very_different_strings() {
         TrieNode {
             value: None,
             prefix: smallvec![],
-            branches: mini_vec![
+            branches: vec![
                 TrieNode {
                     value: Some(()),
                     prefix: smallvec![0, 1, 2, 3],
-                    branches: mini_vec![]
+                    branches: vec![]
                 },
                 TrieNode {
                     value: Some(()),
                     prefix: smallvec![4, 5, 6, 7],
-                    branches: mini_vec![]
+                    branches: vec![]
                 }
             ]
         }
@@ -228,16 +228,16 @@ fn get_something_that_exist() {
         TrieNode {
             value: None,
             prefix: smallvec![],
-            branches: mini_vec![
+            branches: vec![
                 TrieNode {
                     value: Some(()),
                     prefix: smallvec![0, 1, 2, 3],
-                    branches: mini_vec![]
+                    branches: vec![]
                 },
                 TrieNode {
                     value: Some(()),
                     prefix: smallvec![4, 5, 6, 7],
-                    branches: mini_vec![]
+                    branches: vec![]
                 }
             ]
         }
@@ -255,13 +255,13 @@ fn initialize_with_something_big() {
         TrieNode {
             value: None,
             prefix: smallvec![],
-            branches: mini_vec![TrieNode {
+            branches: vec![TrieNode {
                 value: Some(()),
                 prefix: smallvec![0, 1, 2, 3],
-                branches: mini_vec![TrieNode {
+                branches: vec![TrieNode {
                     value: Some(()),
                     prefix: smallvec![4],
-                    branches: mini_vec![]
+                    branches: vec![]
                 },]
             }]
         }
@@ -287,16 +287,16 @@ fn get_nested_exists() {
         TrieNode {
             value: Some(()),
             prefix: smallvec![],
-            branches: mini_vec![TrieNode {
+            branches: vec![TrieNode {
                 value: Some(()),
                 prefix: smallvec![0, 1, 2],
-                branches: mini_vec![TrieNode {
+                branches: vec![TrieNode {
                     value: Some(()),
                     prefix: smallvec![3, 4],
-                    branches: mini_vec![TrieNode {
+                    branches: vec![TrieNode {
                         value: Some(()),
                         prefix: smallvec![5, 6],
-                        branches: mini_vec![]
+                        branches: vec![]
                     }]
                 }]
             },]
@@ -310,5 +310,5 @@ fn get_nested_exists() {
 
 #[test]
 fn assert_size_of_node() {
-    assert_eq!(48, std::mem::size_of::<TrieNode<()>>());
+    assert_eq!(64, std::mem::size_of::<TrieNode<()>>());
 }
