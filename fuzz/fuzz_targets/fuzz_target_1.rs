@@ -10,6 +10,7 @@ lazy_static! {
 
 fuzz_target!(|data: &[u8]| {
     let mut node = TRIE.lock().unwrap();
+    println!("{:?}", data);
     node.insert(data, data.len());
     assert!(node.exists(data));
 });

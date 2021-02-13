@@ -29,7 +29,10 @@ impl<T> Default for TrieNode<T> {
     }
 }
 
-impl<T> TrieNode<T> {
+impl<T> TrieNode<T>
+where
+    T: std::fmt::Debug,
+{
     pub fn insert(&mut self, new_key: &[u8], value: T) {
         self.insert_impl(new_key, &mut Some(value));
     }
@@ -64,11 +67,11 @@ impl<T> TrieNode<T> {
                 }
                 true
             }
-            Cut::BothBegin => return false,
+            Cut::BothBegin => false,
             Cut::BothMiddle(p) => {
-                let drained_value = self.value.take();
-                let drained_key = self.prefix.drain(p..).collect::<Key>();
-                let drained_children = self.branches.drain(..).collect();
+                let drained_value = dbg!(self.value.take());
+                let drained_key = dbg!(self.prefix.drain(p..).collect::<Key>());
+                let drained_children = dbg!(self.branches.drain(..).collect());
                 self.branches.push(TrieNode {
                     value: drained_value,
                     prefix: drained_key,
@@ -311,4 +314,109 @@ fn get_nested_exists() {
 #[test]
 fn assert_size_of_node() {
     assert_eq!(48, std::mem::size_of::<TrieNode<()>>());
+}
+
+#[test]
+fn test_fuzzy_input_1() {
+    let input = [
+        vec![114],
+        vec![114],
+        vec![109],
+        vec![244],
+        vec![40],
+        vec![66],
+        vec![2],
+        vec![0],
+        vec![38],
+        vec![137],
+        vec![3],
+        vec![31],
+        vec![222],
+        vec![64],
+        vec![61],
+        vec![46],
+        vec![33],
+        vec![245],
+        vec![128],
+        vec![42],
+        vec![243],
+        vec![188],
+        vec![165],
+        vec![224],
+        vec![82],
+        vec![37],
+        vec![232],
+        vec![73],
+        vec![196],
+        vec![240],
+        vec![168],
+        vec![131],
+        vec![36],
+        vec![59],
+        vec![25],
+        vec![129],
+        vec![17],
+        vec![1],
+        vec![239],
+        vec![105],
+        vec![221],
+        vec![39],
+        vec![47],
+        vec![44],
+        vec![152],
+        vec![250],
+        vec![149],
+        vec![14],
+        vec![205],
+        vec![223],
+        vec![255],
+        vec![72],
+        vec![93, 254],
+        vec![31, 25],
+        vec![31, 25],
+        vec![6, 0],
+        vec![143, 222],
+        vec![49, 140],
+        vec![0, 1],
+        vec![0, 1],
+        vec![2, 27],
+        vec![2, 27],
+        vec![9, 25],
+        vec![255, 223],
+        vec![255, 223],
+        vec![37, 25],
+        vec![37, 25],
+        vec![230, 45],
+        vec![0, 25],
+        vec![42, 96],
+        vec![42, 96],
+        vec![1, 0],
+        vec![1, 0],
+        vec![0, 20],
+        vec![2, 45],
+        vec![255, 255],
+        vec![244, 244],
+        vec![244, 244],
+        vec![45, 36],
+        vec![135, 25],
+        vec![28, 0],
+        // The next line will crash
+        vec![230, 85],
+    ];
+    let mut trie = TrieNode::default();
+    for x in input.iter() {
+        trie.insert(&x, ());
+    }
+    println!("trie:\n{:#?}", trie);
+    assert!(input.iter().all(|x| { trie.exists(x) }));
+}
+
+#[test]
+fn test_fuzzy_input_1_minimized() {
+    let input = [vec![230, 45], vec![230, 85]];
+    let mut trie = TrieNode::default();
+    for x in input.iter() {
+        trie.insert(&x, ());
+    }
+    assert!(input.iter().all(|x| { trie.exists(x) }));
 }
