@@ -1,3 +1,4 @@
+use minivec::{mini_vec, MiniVec};
 use smallvec::{smallvec, SmallVec};
 
 type Key = SmallVec<[u8; 8]>;
@@ -15,7 +16,7 @@ enum Cut {
 pub struct TrieNode<T> {
     pub(crate) value: Option<T>,
     pub(crate) prefix: Key,
-    pub(crate) branches: Vec<TrieNode<T>>,
+    pub(crate) branches: MiniVec<TrieNode<T>>,
 }
 
 impl<T> Default for TrieNode<T> {
@@ -23,7 +24,7 @@ impl<T> Default for TrieNode<T> {
         TrieNode {
             value: None,
             prefix: smallvec![],
-            branches: vec![],
+            branches: mini_vec![],
         }
     }
 }
@@ -61,7 +62,7 @@ where
                     self.branches.push(TrieNode {
                         value: value.take(),
                         prefix: Key::from(cut_child),
-                        branches: vec![],
+                        branches: mini_vec![],
                     });
                 }
                 true
@@ -79,7 +80,7 @@ where
                 self.branches.push(TrieNode {
                     value: value.take(),
                     prefix: Key::from(&new_key[p..]),
-                    branches: vec![],
+                    branches: mini_vec![],
                 });
                 true
             }
@@ -137,23 +138,23 @@ fn general_tests() {
         TrieNode {
             value: Some(()),
             prefix: smallvec![],
-            branches: vec![TrieNode {
+            branches: mini_vec![TrieNode {
                 value: None,
                 prefix: smallvec![0, 1],
-                branches: vec![
+                branches: mini_vec![
                     TrieNode {
                         value: Some(()),
                         prefix: smallvec![2],
-                        branches: vec![TrieNode {
+                        branches: mini_vec![TrieNode {
                             value: Some(()),
                             prefix: smallvec![3, 4],
-                            branches: vec![]
+                            branches: mini_vec![]
                         },]
                     },
                     TrieNode {
                         value: Some(()),
                         prefix: smallvec![3],
-                        branches: vec![]
+                        branches: mini_vec![]
                     }
                 ]
             },]
@@ -177,16 +178,16 @@ fn insert_empty() {
         TrieNode {
             value: Some(()),
             prefix: smallvec![],
-            branches: vec![TrieNode {
+            branches: mini_vec![TrieNode {
                 value: Some(()),
                 prefix: smallvec![0, 1, 2],
-                branches: vec![TrieNode {
+                branches: mini_vec![TrieNode {
                     value: Some(()),
                     prefix: smallvec![3, 4],
-                    branches: vec![TrieNode {
+                    branches: mini_vec![TrieNode {
                         value: Some(()),
                         prefix: smallvec![5, 6],
-                        branches: vec![]
+                        branches: mini_vec![]
                     }]
                 }]
             },]
@@ -204,16 +205,16 @@ fn insert_very_different_strings() {
         TrieNode {
             value: None,
             prefix: smallvec![],
-            branches: vec![
+            branches: mini_vec![
                 TrieNode {
                     value: Some(()),
                     prefix: smallvec![0, 1, 2, 3],
-                    branches: vec![]
+                    branches: mini_vec![]
                 },
                 TrieNode {
                     value: Some(()),
                     prefix: smallvec![4, 5, 6, 7],
-                    branches: vec![]
+                    branches: mini_vec![]
                 }
             ]
         }
@@ -230,16 +231,16 @@ fn get_something_that_exist() {
         TrieNode {
             value: None,
             prefix: smallvec![],
-            branches: vec![
+            branches: mini_vec![
                 TrieNode {
                     value: Some(()),
                     prefix: smallvec![0, 1, 2, 3],
-                    branches: vec![]
+                    branches: mini_vec![]
                 },
                 TrieNode {
                     value: Some(()),
                     prefix: smallvec![4, 5, 6, 7],
-                    branches: vec![]
+                    branches: mini_vec![]
                 }
             ]
         }
@@ -257,13 +258,13 @@ fn initialize_with_something_big() {
         TrieNode {
             value: None,
             prefix: smallvec![],
-            branches: vec![TrieNode {
+            branches: mini_vec![TrieNode {
                 value: Some(()),
                 prefix: smallvec![0, 1, 2, 3],
-                branches: vec![TrieNode {
+                branches: mini_vec![TrieNode {
                     value: Some(()),
                     prefix: smallvec![4],
-                    branches: vec![]
+                    branches: mini_vec![]
                 },]
             }]
         }
@@ -289,16 +290,16 @@ fn get_nested_exists() {
         TrieNode {
             value: Some(()),
             prefix: smallvec![],
-            branches: vec![TrieNode {
+            branches: mini_vec![TrieNode {
                 value: Some(()),
                 prefix: smallvec![0, 1, 2],
-                branches: vec![TrieNode {
+                branches: mini_vec![TrieNode {
                     value: Some(()),
                     prefix: smallvec![3, 4],
-                    branches: vec![TrieNode {
+                    branches: mini_vec![TrieNode {
                         value: Some(()),
                         prefix: smallvec![5, 6],
-                        branches: vec![]
+                        branches: mini_vec![]
                     }]
                 }]
             },]
@@ -312,95 +313,95 @@ fn get_nested_exists() {
 
 #[test]
 fn assert_size_of_node() {
-    assert_eq!(64, std::mem::size_of::<TrieNode<()>>());
+    assert_eq!(48, std::mem::size_of::<TrieNode<()>>());
 }
 
 #[test]
 fn test_fuzzy_input_1() {
     let input = [
-        vec![114],
-        vec![114],
-        vec![109],
-        vec![244],
-        vec![40],
-        vec![66],
-        vec![2],
-        vec![0],
-        vec![38],
-        vec![137],
-        vec![3],
-        vec![31],
-        vec![222],
-        vec![64],
-        vec![61],
-        vec![46],
-        vec![33],
-        vec![245],
-        vec![128],
-        vec![42],
-        vec![243],
-        vec![188],
-        vec![165],
-        vec![224],
-        vec![82],
-        vec![37],
-        vec![232],
-        vec![73],
-        vec![196],
-        vec![240],
-        vec![168],
-        vec![131],
-        vec![36],
-        vec![59],
-        vec![25],
-        vec![129],
-        vec![17],
-        vec![1],
-        vec![239],
-        vec![105],
-        vec![221],
-        vec![39],
-        vec![47],
-        vec![44],
-        vec![152],
-        vec![250],
-        vec![149],
-        vec![14],
-        vec![205],
-        vec![223],
-        vec![255],
-        vec![72],
-        vec![93, 254],
-        vec![31, 25],
-        vec![31, 25],
-        vec![6, 0],
-        vec![143, 222],
-        vec![49, 140],
-        vec![0, 1],
-        vec![0, 1],
-        vec![2, 27],
-        vec![2, 27],
-        vec![9, 25],
-        vec![255, 223],
-        vec![255, 223],
-        vec![37, 25],
-        vec![37, 25],
-        vec![230, 45],
-        vec![0, 25],
-        vec![42, 96],
-        vec![42, 96],
-        vec![1, 0],
-        vec![1, 0],
-        vec![0, 20],
-        vec![2, 45],
-        vec![255, 255],
-        vec![244, 244],
-        vec![244, 244],
-        vec![45, 36],
-        vec![135, 25],
-        vec![28, 0],
+        mini_vec![114],
+        mini_vec![114],
+        mini_vec![109],
+        mini_vec![244],
+        mini_vec![40],
+        mini_vec![66],
+        mini_vec![2],
+        mini_vec![0],
+        mini_vec![38],
+        mini_vec![137],
+        mini_vec![3],
+        mini_vec![31],
+        mini_vec![222],
+        mini_vec![64],
+        mini_vec![61],
+        mini_vec![46],
+        mini_vec![33],
+        mini_vec![245],
+        mini_vec![128],
+        mini_vec![42],
+        mini_vec![243],
+        mini_vec![188],
+        mini_vec![165],
+        mini_vec![224],
+        mini_vec![82],
+        mini_vec![37],
+        mini_vec![232],
+        mini_vec![73],
+        mini_vec![196],
+        mini_vec![240],
+        mini_vec![168],
+        mini_vec![131],
+        mini_vec![36],
+        mini_vec![59],
+        mini_vec![25],
+        mini_vec![129],
+        mini_vec![17],
+        mini_vec![1],
+        mini_vec![239],
+        mini_vec![105],
+        mini_vec![221],
+        mini_vec![39],
+        mini_vec![47],
+        mini_vec![44],
+        mini_vec![152],
+        mini_vec![250],
+        mini_vec![149],
+        mini_vec![14],
+        mini_vec![205],
+        mini_vec![223],
+        mini_vec![255],
+        mini_vec![72],
+        mini_vec![93, 254],
+        mini_vec![31, 25],
+        mini_vec![31, 25],
+        mini_vec![6, 0],
+        mini_vec![143, 222],
+        mini_vec![49, 140],
+        mini_vec![0, 1],
+        mini_vec![0, 1],
+        mini_vec![2, 27],
+        mini_vec![2, 27],
+        mini_vec![9, 25],
+        mini_vec![255, 223],
+        mini_vec![255, 223],
+        mini_vec![37, 25],
+        mini_vec![37, 25],
+        mini_vec![230, 45],
+        mini_vec![0, 25],
+        mini_vec![42, 96],
+        mini_vec![42, 96],
+        mini_vec![1, 0],
+        mini_vec![1, 0],
+        mini_vec![0, 20],
+        mini_vec![2, 45],
+        mini_vec![255, 255],
+        mini_vec![244, 244],
+        mini_vec![244, 244],
+        mini_vec![45, 36],
+        mini_vec![135, 25],
+        mini_vec![28, 0],
         // The next line will crash
-        vec![230, 85],
+        mini_vec![230, 85],
     ];
     let mut trie = TrieNode::default();
     for x in input.iter() {
@@ -411,7 +412,7 @@ fn test_fuzzy_input_1() {
 
 #[test]
 fn test_fuzzy_input_1_minimized() {
-    let input = [vec![230, 45], vec![230, 85]];
+    let input = [mini_vec![230, 45], mini_vec![230, 85]];
     let mut trie = TrieNode::default();
     for x in input.iter() {
         trie.insert(&x, ());
