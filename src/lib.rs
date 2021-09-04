@@ -37,6 +37,37 @@ where
         self.insert_impl(new_key, &mut Some(value));
     }
 
+    pub fn exists(&self, key: &[u8]) -> bool {
+        match self.cut_key(key) {
+            Cut::Parent(_) => false,
+            Cut::Child(idx) => self.branches.iter().any(|x| x.exists(&key[idx..])),
+            Cut::BothBegin => false,
+            Cut::BothMiddle(_) => false,
+            Cut::BothEnd => true,
+        }
+    }
+
+    pub fn remove(&mut self, key: &[u8]) -> Option<T> {
+        match self.cut_key(key) {
+            Cut::Parent(_) => None,
+            Cut::Child(idx) => self
+                .branches
+                .iter_mut()
+                .find_map(|x| x.remove_impl(&key[idx..]).map(|v| v.1)),
+            Cut::BothBegin => None,
+            Cut::BothMiddle(_) => None,
+            Cut::BothEnd => {
+                self.prefix.clear();
+                return self.value.take();
+            }
+        }
+    }
+}
+
+impl<T> TrieNode<T>
+where
+    T: std::fmt::Debug,
+{
     fn insert_impl(&mut self, new_key: &[u8], value: &mut Option<T>) -> bool {
         let cut = self.cut_key(new_key);
         match cut {
@@ -91,13 +122,34 @@ where
         }
     }
 
-    pub fn exists(&self, key: &[u8]) -> bool {
+    fn remove_impl(&mut self, key: &[u8]) -> Option<(bool, T)> {
         match self.cut_key(key) {
-            Cut::Parent(_) => false,
-            Cut::Child(idx) => self.branches.iter().any(|x| x.exists(&key[idx..])),
-            Cut::BothBegin => false,
-            Cut::BothMiddle(_) => false,
-            Cut::BothEnd => true,
+            Cut::Parent(_) => None,
+            Cut::Child(key_idx) => {
+                let result = self
+                    .branches
+                    .iter_mut()
+                    .enumerate()
+                    .find_map(|(child_idx, x)| {
+                        x.remove_impl(&key[key_idx..])
+                            .map(|(should_delete, value)| (child_idx, should_delete, value))
+                    });
+
+                match result {
+                    Some((child_idx, true, _)) => {
+                        let result = self.branches.remove(child_idx);
+                        return result.value.map(|v| (false, v));
+                    }
+                    Some((_, false, value)) => return Some((false, value)),
+                    _ => return None,
+                }
+            }
+            Cut::BothBegin => None,
+            Cut::BothMiddle(_) => None,
+            Cut::BothEnd => {
+                self.prefix.clear();
+                return self.value.take().map(|v| (true, v));
+            }
         }
     }
 
@@ -314,6 +366,7 @@ fn get_nested_exists() {
 #[test]
 fn assert_size_of_node() {
     assert_eq!(48, std::mem::size_of::<TrieNode<()>>());
+    assert_eq!(48, std::mem::size_of::<(Vec<()>, Vec<()>)>());
 }
 
 #[test]
@@ -418,4 +471,49 @@ fn test_fuzzy_input_1_minimized() {
         trie.insert(&x, ());
     }
     assert!(input.iter().all(|x| { trie.exists(x) }));
+}
+
+#[test]
+fn test_multiple_insert_and_remove() {
+    let key1 = [230, 45];
+    let key2 = [230, 85];
+    let key3 = [230, 100];
+    let mut trie = TrieNode::default();
+    assert!(!trie.exists(&key1));
+    assert!(!trie.exists(&key2));
+    trie.insert(&key1, ());
+    assert!(trie.exists(&key1));
+    assert!(!trie.exists(&key2));
+    trie.insert(&key2, ());
+    assert!(trie.exists(&key1));
+    assert!(trie.exists(&key2));
+    trie.remove(&key1);
+    assert!(!trie.exists(&key1));
+    assert!(trie.exists(&key2));
+    trie.remove(&key2);
+    assert!(!trie.exists(&key1));
+    assert!(!trie.exists(&key2));
+    trie.insert(&key3, ());
+}
+
+#[test]
+fn test_insert_and_remove() {
+    let key1 = [230, 45];
+    let mut trie = TrieNode::default();
+    assert!(!trie.exists(&key1));
+    trie.insert(&key1, ());
+    assert!(trie.exists(&key1));
+    trie.remove(&key1);
+    assert!(!trie.exists(&key1));
+}
+
+#[test]
+fn test_insert_and_remove_empty_bytes() {
+    let key1 = [];
+    let mut trie = TrieNode::default();
+    assert!(!trie.exists(&key1));
+    trie.insert(&key1, ());
+    assert!(trie.exists(&key1));
+    trie.remove(&key1);
+    assert!(!trie.exists(&key1));
 }

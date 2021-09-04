@@ -5,11 +5,21 @@ use libfuzzer_sys::fuzz_target;
 use std::sync::Mutex;
 
 lazy_static! {
-    static ref TRIE: Mutex<TrieNode<usize>> = Mutex::new(TrieNode::default());
+    static ref TRIE: Mutex<TrieNode<()>> = Mutex::new(TrieNode::default());
+    static ref STORED: Mutex<Vec<Vec<u8>>> = Mutex::new(Vec::default());
 }
 
 fuzz_target!(|data: &[u8]| {
     let mut node = TRIE.lock().unwrap();
-    node.insert(data, data.len());
-    assert!(node.exists(data));
+    if data.len() == 0 {
+        node.insert(data, ());
+        assert!(node.exists(data));
+        node.remove(data);
+        assert!(node.exists(data));
+    } else {
+        node.insert(data, ());
+        assert!(node.exists(data));
+        node.remove(data);
+        assert!(!node.exists(data));
+    }
 });

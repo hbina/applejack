@@ -10,5 +10,5 @@ description = "Simple implementation of Radix tree"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-minivec = "0.2.3"
+minivec = "0.3.1"
 smallvec = "1.6.1"
