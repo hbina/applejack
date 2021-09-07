@@ -29,10 +29,7 @@ impl<T> Default for TrieNode<T> {
     }
 }
 
-impl<T> TrieNode<T>
-where
-    T: std::fmt::Debug,
-{
+impl<T> TrieNode<T> {
     pub fn insert(&mut self, new_key: &[u8], value: T) {
         self.insert_impl(new_key, &mut Some(value));
     }
@@ -64,10 +61,7 @@ where
     }
 }
 
-impl<T> TrieNode<T>
-where
-    T: std::fmt::Debug,
-{
+impl<T> TrieNode<T> {
     fn insert_impl(&mut self, new_key: &[u8], value: &mut Option<T>) -> bool {
         let cut = self.cut_key(new_key);
         match cut {
