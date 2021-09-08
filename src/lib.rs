@@ -40,7 +40,7 @@ impl<T> TrieNode<T> {
             Cut::Child(idx) => self.branches.iter().any(|x| x.exists(&key[idx..])),
             Cut::BothBegin => false,
             Cut::BothMiddle(_) => false,
-            Cut::BothEnd => true,
+            Cut::BothEnd => self.value.is_some(),
         }
     }
 
