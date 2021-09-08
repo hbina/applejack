@@ -6,7 +6,6 @@ use std::sync::Mutex;
 
 lazy_static! {
     static ref TRIE: Mutex<TrieNode<()>> = Mutex::new(TrieNode::default());
-    static ref STORED: Mutex<Vec<Vec<u8>>> = Mutex::new(Vec::default());
 }
 
 fuzz_target!(|data: &[u8]| {

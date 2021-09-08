@@ -1,7 +1,7 @@
 use minivec::{mini_vec, MiniVec};
 use smallvec::{smallvec, SmallVec};
 
-type Key = SmallVec<[u8; 8]>;
+type Key = SmallVec<[u8; 16]>;
 
 #[derive(PartialEq, Debug)]
 enum Cut {
@@ -360,6 +360,9 @@ fn get_nested_exists() {
 #[test]
 fn assert_size_of_node() {
     assert_eq!(48, std::mem::size_of::<TrieNode<()>>());
+    assert_eq!(8, std::mem::size_of::<MiniVec<TrieNode<()>>>());
+    assert_eq!(32, std::mem::size_of::<SmallVec<[u8; 0]>>());
+    assert_eq!(32, std::mem::size_of::<Key>());
     assert_eq!(48, std::mem::size_of::<(Vec<()>, Vec<()>)>());
 }
 
