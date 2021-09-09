@@ -321,7 +321,7 @@ fn initialize_with_something_big() {
 #[test]
 fn get_empty_exists() {
     let trie = TrieNode::<()>::default();
-    assert!(trie.exists(&[]));
+    assert!(!trie.exists(&[]));
 }
 
 #[test]
