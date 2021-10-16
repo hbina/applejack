@@ -145,6 +145,7 @@ impl<T> RaxNode<T> {
         }
     }
 
+    // TODO: Should reimplement this into 2 parts: function that gets the mut& requested node and then mutating said node.
     fn remove_impl(&mut self, key: &[u8]) -> Option<(bool, T)> {
         match self.cut_key(key) {
             Cut::Parent(_) => None,
