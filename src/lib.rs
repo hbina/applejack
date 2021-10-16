@@ -28,8 +28,13 @@ impl<T> Rax<T> {
     pub fn remove(&mut self, key: &[u8]) -> Option<T> {
         self.node.remove(key)
     }
+
+    pub fn get(&self, key: &[u8]) -> Option<&T> {
+        self.node.get(key)
+    }
 }
 
+// TODO: Add ability to specify the kind of containers to be used for keys and branches?
 #[derive(PartialEq, Debug)]
 struct RaxNode<T> {
     pub(crate) value: Option<T>,
@@ -71,6 +76,16 @@ impl<T> RaxNode<T> {
                 self.prefix.clear();
                 return self.value.take();
             }
+        }
+    }
+
+    fn get(&self, key: &[u8]) -> Option<&T> {
+        match self.cut_key(key) {
+            Cut::Parent(_) => None,
+            Cut::Child(idx) => self.branches.iter().find_map(|x| x.get_impl(&key[idx..])),
+            Cut::BothBegin => None,
+            Cut::BothMiddle(_) => None,
+            Cut::BothEnd => self.value.as_ref(),
         }
     }
 }
@@ -161,6 +176,19 @@ impl<T> RaxNode<T> {
         }
     }
 
+    fn get_impl(&self, key: &[u8]) -> Option<&T> {
+        match self.cut_key(key) {
+            Cut::Parent(_) => None,
+            Cut::Child(key_idx) => self
+                .branches
+                .iter()
+                .find_map(|x| x.get_impl(&key[key_idx..]).map(|value| (value))),
+            Cut::BothBegin => None,
+            Cut::BothMiddle(_) => None,
+            Cut::BothEnd => self.value.as_ref(),
+        }
+    }
+
     fn cut_key<'b>(&self, child_key: &'b [u8]) -> Cut {
         let idx = self.prefix.iter().zip(child_key).position(|(l, r)| l != r);
         if let Some(idx) = idx {
@@ -170,9 +198,9 @@ impl<T> RaxNode<T> {
                 Cut::BothMiddle(idx)
             }
         } else {
-            let (llen, clen) = (self.prefix.len(), child_key.len());
-            match llen.cmp(&clen) {
-                std::cmp::Ordering::Less => Cut::Child(llen),
+            let (plen, clen) = (self.prefix.len(), child_key.len());
+            match plen.cmp(&clen) {
+                std::cmp::Ordering::Less => Cut::Child(plen),
                 std::cmp::Ordering::Equal => Cut::BothEnd,
                 std::cmp::Ordering::Greater => Cut::Parent(clen),
             }
@@ -522,6 +550,18 @@ fn test_insert_and_remove() {
 fn test_insert_and_remove_empty_bytes() {
     let key1 = [];
     let mut trie = RaxNode::default();
+    assert!(!trie.exists(&key1));
+    trie.insert_impl(&key1, &mut Some(()));
+    assert!(trie.exists(&key1));
+    trie.remove(&key1);
+    assert!(!trie.exists(&key1));
+}
+
+#[test]
+fn test_size_of_container() {
+    let key1 = [];
+    let mut trie = RaxNode::default();
+    assert_eq!(std::mem::size_of_val(&trie), 48);
     assert!(!trie.exists(&key1));
     trie.insert_impl(&key1, &mut Some(()));
     assert!(trie.exists(&key1));
