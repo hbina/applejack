@@ -1,5 +1,5 @@
 use minivec::{mini_vec, MiniVec};
-use smallvec::{smallvec, SmallVec};
+use smallvec::SmallVec;
 
 pub type Key = SmallVec<[u8; 16]>;
 
@@ -12,13 +12,14 @@ enum Cut {
     BothEnd,
 }
 
+#[derive(Default, Debug)]
 pub struct Rax<T> {
     node: RaxNode<T>,
 }
 
 impl<T> Rax<T> {
     pub fn insert(&mut self, new_key: &[u8], value: T) {
-        self.node.insert_impl(new_key, &mut Some(value));
+        self.node.insert_impl(new_key, value);
     }
 
     pub fn exists(&self, key: &[u8]) -> bool {
@@ -35,21 +36,11 @@ impl<T> Rax<T> {
 }
 
 // TODO: Add ability to specify the kind of containers to be used for keys and branches?
-#[derive(PartialEq, Debug)]
+#[derive(PartialEq, Default, Debug)]
 struct RaxNode<T> {
     pub(crate) value: Option<T>,
     pub(crate) prefix: Key,
     pub(crate) branches: MiniVec<RaxNode<T>>,
-}
-
-impl<T> Default for RaxNode<T> {
-    fn default() -> Self {
-        RaxNode {
-            value: None,
-            prefix: smallvec![],
-            branches: mini_vec![],
-        }
-    }
 }
 
 impl<T> RaxNode<T> {
@@ -91,9 +82,28 @@ impl<T> RaxNode<T> {
 }
 
 impl<T> RaxNode<T> {
-    fn insert_impl(&mut self, new_key: &[u8], value: &mut Option<T>) -> bool {
-        let cut = self.cut_key(new_key);
-        match cut {
+    pub fn insert_impl(&mut self, new_key: &[u8], value: T) {
+        let value = &mut Some(value);
+        let inserted = self.insert_impl_inner(new_key, value);
+        if !inserted {
+            let drained_value = self.value.take();
+            let drained_key = self.prefix.drain(..).collect::<Key>();
+            let drained_children = self.branches.drain(..).collect();
+            self.branches.push(RaxNode {
+                value: drained_value,
+                prefix: drained_key,
+                branches: drained_children,
+            });
+            self.branches.push(RaxNode {
+                value: value.take(),
+                prefix: Key::from(new_key),
+                branches: mini_vec![],
+            });
+        }
+    }
+
+    fn insert_impl_inner(&mut self, new_key: &[u8], value: &mut Option<T>) -> bool {
+        match self.cut_key(new_key) {
             Cut::Parent(p) => {
                 let drained_value = self.value.take();
                 self.value = value.take();
@@ -108,16 +118,21 @@ impl<T> RaxNode<T> {
             }
             Cut::Child(c) => {
                 let cut_child = &new_key[c..];
-                let found = self
-                    .branches
-                    .iter_mut()
-                    .any(|x| x.insert_impl(cut_child, value));
-                if !found {
-                    self.branches.push(RaxNode {
-                        value: value.take(),
-                        prefix: Key::from(cut_child),
-                        branches: mini_vec![],
-                    });
+                if self.prefix.is_empty() && self.branches.is_empty() {
+                    self.prefix = cut_child.into();
+                    self.value = value.take();
+                } else {
+                    let found = self
+                        .branches
+                        .iter_mut()
+                        .any(|x| x.insert_impl_inner(cut_child, value));
+                    if !found {
+                        self.branches.push(RaxNode {
+                            value: value.take(),
+                            prefix: Key::from(cut_child),
+                            branches: mini_vec![],
+                        });
+                    }
                 }
                 true
             }
@@ -212,11 +227,11 @@ impl<T> RaxNode<T> {
 #[test]
 fn general_tests() {
     let mut trie = RaxNode::default();
-    trie.insert_impl(&[0, 1, 2], &mut Some(()));
-    trie.insert_impl(&[0, 1, 2, 3, 4], &mut Some(()));
-    trie.insert_impl(&[0, 1, 3], &mut Some(()));
-    trie.insert_impl(&[], &mut Some(()));
-    trie.insert_impl(&[], &mut Some(()));
+    trie.insert_impl(&[0, 1, 2], ());
+    trie.insert_impl(&[0, 1, 2, 3, 4], ());
+    trie.insert_impl(&[0, 1, 3], ());
+    trie.insert_impl(&[], ());
+    trie.insert_impl(&[], ());
     assert!(trie.exists(&[0, 1, 2]));
     assert!(trie.exists(&[0, 1, 2, 3, 4]));
     assert!(trie.exists(&[0, 1, 3]));
@@ -226,23 +241,23 @@ fn general_tests() {
         trie,
         RaxNode {
             value: Some(()),
-            prefix: smallvec![],
+            prefix: smallvec::smallvec![],
             branches: mini_vec![RaxNode {
                 value: None,
-                prefix: smallvec![0, 1],
+                prefix: smallvec::smallvec![0, 1],
                 branches: mini_vec![
                     RaxNode {
                         value: Some(()),
-                        prefix: smallvec![2],
+                        prefix: smallvec::smallvec![2],
                         branches: mini_vec![RaxNode {
                             value: Some(()),
-                            prefix: smallvec![3, 4],
+                            prefix: smallvec::smallvec![3, 4],
                             branches: mini_vec![]
                         },]
                     },
                     RaxNode {
                         value: Some(()),
-                        prefix: smallvec![3],
+                        prefix: smallvec::smallvec![3],
                         branches: mini_vec![]
                     }
                 ]
@@ -254,10 +269,10 @@ fn general_tests() {
 #[test]
 fn insert_empty() {
     let mut trie = RaxNode::default();
-    trie.insert_impl(&[0, 1, 2], &mut Some(()));
-    trie.insert_impl(&[], &mut Some(()));
-    trie.insert_impl(&[0, 1, 2, 3, 4], &mut Some(()));
-    trie.insert_impl(&[0, 1, 2, 3, 4, 5, 6], &mut Some(()));
+    trie.insert_impl(&[0, 1, 2], ());
+    trie.insert_impl(&[], ());
+    trie.insert_impl(&[0, 1, 2, 3, 4], ());
+    trie.insert_impl(&[0, 1, 2, 3, 4, 5, 6], ());
     assert!(trie.exists(&[0, 1, 2]));
     assert!(trie.exists(&[]));
     assert!(!trie.exists(&[0, 1, 2, 3]));
@@ -266,16 +281,16 @@ fn insert_empty() {
         trie,
         RaxNode {
             value: Some(()),
-            prefix: smallvec![],
+            prefix: smallvec::smallvec![],
             branches: mini_vec![RaxNode {
                 value: Some(()),
-                prefix: smallvec![0, 1, 2],
+                prefix: smallvec::smallvec![0, 1, 2],
                 branches: mini_vec![RaxNode {
                     value: Some(()),
-                    prefix: smallvec![3, 4],
+                    prefix: smallvec::smallvec![3, 4],
                     branches: mini_vec![RaxNode {
                         value: Some(()),
-                        prefix: smallvec![5, 6],
+                        prefix: smallvec::smallvec![5, 6],
                         branches: mini_vec![]
                     }]
                 }]
@@ -287,22 +302,22 @@ fn insert_empty() {
 #[test]
 fn insert_very_different_strings() {
     let mut trie = RaxNode::default();
-    trie.insert_impl(&[0, 1, 2, 3], &mut Some(()));
-    trie.insert_impl(&[4, 5, 6, 7], &mut Some(()));
+    trie.insert_impl(&[0, 1, 2, 3], ());
+    trie.insert_impl(&[4, 5, 6, 7], ());
     assert_eq!(
         trie,
         RaxNode {
             value: None,
-            prefix: smallvec![],
+            prefix: smallvec::smallvec![],
             branches: mini_vec![
                 RaxNode {
                     value: Some(()),
-                    prefix: smallvec![0, 1, 2, 3],
+                    prefix: smallvec::smallvec![0, 1, 2, 3],
                     branches: mini_vec![]
                 },
                 RaxNode {
                     value: Some(()),
-                    prefix: smallvec![4, 5, 6, 7],
+                    prefix: smallvec::smallvec![4, 5, 6, 7],
                     branches: mini_vec![]
                 }
             ]
@@ -313,22 +328,24 @@ fn insert_very_different_strings() {
 #[test]
 fn get_something_that_exist() {
     let mut trie = RaxNode::default();
-    trie.insert_impl(&[0, 1, 2, 3], &mut Some(()));
-    trie.insert_impl(&[4, 5, 6, 7], &mut Some(()));
+    trie.insert_impl(&[0, 1, 2, 3], ());
+    println!("1:\n{:#?}", trie);
+    trie.insert_impl(&[4, 5, 6, 7], ());
+    println!("2:\n{:#?}", trie);
     assert_eq!(
         trie,
         RaxNode {
             value: None,
-            prefix: smallvec![],
+            prefix: smallvec::smallvec![],
             branches: mini_vec![
                 RaxNode {
                     value: Some(()),
-                    prefix: smallvec![0, 1, 2, 3],
+                    prefix: smallvec::smallvec![0, 1, 2, 3],
                     branches: mini_vec![]
                 },
                 RaxNode {
                     value: Some(()),
-                    prefix: smallvec![4, 5, 6, 7],
+                    prefix: smallvec::smallvec![4, 5, 6, 7],
                     branches: mini_vec![]
                 }
             ]
@@ -340,22 +357,18 @@ fn get_something_that_exist() {
 #[test]
 fn initialize_with_something_big() {
     let mut trie = RaxNode::default();
-    trie.insert_impl(&[0, 1, 2, 3], &mut Some(()));
-    trie.insert_impl(&[0, 1, 2, 3, 4], &mut Some(()));
+    trie.insert_impl(&[0, 1, 2, 3], ());
+    trie.insert_impl(&[0, 1, 2, 3, 4], ());
     assert_eq!(
         trie,
         RaxNode {
-            value: None,
-            prefix: smallvec![],
+            value: Some(()),
+            prefix: smallvec::smallvec![0, 1, 2, 3],
             branches: mini_vec![RaxNode {
                 value: Some(()),
-                prefix: smallvec![0, 1, 2, 3],
-                branches: mini_vec![RaxNode {
-                    value: Some(()),
-                    prefix: smallvec![4],
-                    branches: mini_vec![]
-                },]
-            }]
+                prefix: smallvec::smallvec![4],
+                branches: mini_vec![]
+            },]
         }
     );
     assert!(trie.exists(&[0, 1, 2, 3]));
@@ -370,24 +383,24 @@ fn get_empty_exists() {
 #[test]
 fn get_nested_exists() {
     let mut trie = RaxNode::default();
-    trie.insert_impl(&[0, 1, 2], &mut Some(()));
-    trie.insert_impl(&[], &mut Some(()));
-    trie.insert_impl(&[0, 1, 2, 3, 4], &mut Some(()));
-    trie.insert_impl(&[0, 1, 2, 3, 4, 5, 6], &mut Some(()));
+    trie.insert_impl(&[0, 1, 2], ());
+    trie.insert_impl(&[], ());
+    trie.insert_impl(&[0, 1, 2, 3, 4], ());
+    trie.insert_impl(&[0, 1, 2, 3, 4, 5, 6], ());
     assert_eq!(
         trie,
         RaxNode {
             value: Some(()),
-            prefix: smallvec![],
+            prefix: smallvec::smallvec![],
             branches: mini_vec![RaxNode {
                 value: Some(()),
-                prefix: smallvec![0, 1, 2],
+                prefix: smallvec::smallvec![0, 1, 2],
                 branches: mini_vec![RaxNode {
                     value: Some(()),
-                    prefix: smallvec![3, 4],
+                    prefix: smallvec::smallvec![3, 4],
                     branches: mini_vec![RaxNode {
                         value: Some(()),
-                        prefix: smallvec![5, 6],
+                        prefix: smallvec::smallvec![5, 6],
                         branches: mini_vec![]
                     }]
                 }]
@@ -498,7 +511,7 @@ fn test_fuzzy_input_1() {
     ];
     let mut trie = RaxNode::default();
     for x in input.iter() {
-        trie.insert_impl(&x, &mut Some(()));
+        trie.insert_impl(&x, ());
     }
     assert!(input.iter().all(|x| { trie.exists(x) }));
 }
@@ -508,7 +521,7 @@ fn test_fuzzy_input_1_minimized() {
     let input = [mini_vec![230, 45], mini_vec![230, 85]];
     let mut trie = RaxNode::default();
     for x in input.iter() {
-        trie.insert_impl(&x, &mut Some(()));
+        trie.insert_impl(&x, ());
     }
     assert!(input.iter().all(|x| { trie.exists(x) }));
 }
@@ -521,10 +534,10 @@ fn test_multiple_insert_and_remove() {
     let mut trie = RaxNode::default();
     assert!(!trie.exists(&key1));
     assert!(!trie.exists(&key2));
-    trie.insert_impl(&key1, &mut Some(()));
+    trie.insert_impl(&key1, ());
     assert!(trie.exists(&key1));
     assert!(!trie.exists(&key2));
-    trie.insert_impl(&key2, &mut Some(()));
+    trie.insert_impl(&key2, ());
     assert!(trie.exists(&key1));
     assert!(trie.exists(&key2));
     trie.remove(&key1);
@@ -533,7 +546,7 @@ fn test_multiple_insert_and_remove() {
     trie.remove(&key2);
     assert!(!trie.exists(&key1));
     assert!(!trie.exists(&key2));
-    trie.insert_impl(&key3, &mut Some(()));
+    trie.insert_impl(&key3, ());
 }
 
 #[test]
@@ -541,7 +554,7 @@ fn test_insert_and_remove() {
     let key1 = [230, 45];
     let mut trie = RaxNode::default();
     assert!(!trie.exists(&key1));
-    trie.insert_impl(&key1, &mut Some(()));
+    trie.insert_impl(&key1, ());
     assert!(trie.exists(&key1));
     trie.remove(&key1);
     assert!(!trie.exists(&key1));
@@ -552,7 +565,7 @@ fn test_insert_and_remove_empty_bytes() {
     let key1 = [];
     let mut trie = RaxNode::default();
     assert!(!trie.exists(&key1));
-    trie.insert_impl(&key1, &mut Some(()));
+    trie.insert_impl(&key1, ());
     assert!(trie.exists(&key1));
     trie.remove(&key1);
     assert!(!trie.exists(&key1));
@@ -564,7 +577,7 @@ fn test_size_of_container() {
     let mut trie = RaxNode::default();
     assert_eq!(std::mem::size_of_val(&trie), 48);
     assert!(!trie.exists(&key1));
-    trie.insert_impl(&key1, &mut Some(()));
+    trie.insert_impl(&key1, ());
     assert!(trie.exists(&key1));
     trie.remove(&key1);
     assert!(!trie.exists(&key1));
