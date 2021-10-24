@@ -1,7 +1,7 @@
 #![no_main]
 use applejack::Rax;
+use arbitrary::Arbitrary;
 use lazy_static::lazy_static;
-use libfuzzer_sys::arbitrary::Arbitrary;
 use libfuzzer_sys::fuzz_target;
 use rand::distributions::{Distribution, WeightedIndex};
 use std::collections::HashMap;
