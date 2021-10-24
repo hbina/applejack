@@ -18,14 +18,14 @@ lazy_static! {
 fuzz_target!(|data: KeyValue| {
     let mut rng = rand::thread_rng();
     let mut trie = TRIE.lock().unwrap();
+    println!("trie:{:#?}", trie);
     if rand::random() {
         println!("inserting:{:?}", data);
         trie.0.insert(data.0.as_ref(), data.1.clone());
         trie.1.insert(data.0.clone(), data.1.clone());
         assert!(trie.0.exists(data.0.as_ref()));
     } else {
-        println!("removing");
-        println!("trie:{:#?}", trie);
+        println!("removing:{:?}", data);
         if !trie.1.is_empty() {
             let choices = trie
                 .1
@@ -36,6 +36,7 @@ fuzz_target!(|data: KeyValue| {
                 .unwrap()
                 .sample(&mut rng);
             let picked_key = &choices[choice];
+            println!("choices:{:#?}", choices);
             println!("picked_key:{:#?}", choice);
             let removed_value = trie.0.remove(&picked_key.0.as_ref()).unwrap();
             let stored_value = trie.1.remove(&picked_key.0).unwrap();

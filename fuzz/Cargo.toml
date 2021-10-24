@@ -33,3 +33,9 @@ name = "insert_indefinitely"
 path = "fuzz_targets/insert_indefinitely.rs"
 test = false
 doc = false
+
+[[bin]]
+name = "run_sequence_of_insert_and_remove"
+path = "fuzz_targets/run_sequence_of_insert_and_remove.rs"
+test = false
+doc = false
