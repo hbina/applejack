@@ -23,12 +23,6 @@ path = ".."
 members = ["."]
 
 [[bin]]
-name = "insert_and_remove"
-path = "fuzz_targets/insert_and_remove.rs"
-test = false
-doc = false
-
-[[bin]]
 name = "insert_indefinitely"
 path = "fuzz_targets/insert_indefinitely.rs"
 test = false
