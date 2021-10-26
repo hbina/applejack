@@ -1,7 +1,8 @@
-use minivec::{mini_vec, MiniVec};
+use minivec::MiniVec;
 use smallvec::SmallVec;
 
-pub type Key = SmallVec<[u8; 16]>;
+type Key = SmallVec<[u8; 16]>;
+type Branches<T> = MiniVec<RaxNode<T>>;
 
 #[derive(PartialEq, Debug)]
 enum Cut {
@@ -14,19 +15,19 @@ enum Cut {
 
 #[derive(Default, Debug)]
 pub struct Rax<T> {
-    branches: Vec<RaxNode<T>>,
+    branches: Branches<T>,
 }
 
 impl<T> Rax<T> {
     pub fn insert(&mut self, key: &[u8], value: T) {
-        if let Some(node) = self.branches.iter_mut().find_map(|s| s.insert_node(key)) {
-            node.value = Some(value)
+        if let Some(node) = self.branches.iter_mut().find_map(|n| n.insert_node(key)) {
+            node.value = Some(value);
         } else {
             self.branches.push(RaxNode {
                 value: Some(value),
-                prefix: Vec::from(key),
+                prefix: Key::from(key),
                 branches: vec![],
-            })
+            });
         };
     }
 
@@ -35,7 +36,9 @@ impl<T> Rax<T> {
     }
 
     pub fn remove(&mut self, key: &[u8]) -> Option<T> {
-        unimplemented!()
+        self.branches
+            .iter_mut()
+            .find_map(|n| n.remove_node(key).map(|s| s.0))
     }
 
     pub fn get(&self, key: &[u8]) -> Option<&T> {
@@ -51,7 +54,7 @@ impl<T> Rax<T> {
 #[derive(PartialEq, Default, Debug)]
 struct RaxNode<T> {
     pub(crate) value: Option<T>,
-    pub(crate) prefix: Vec<u8>,
+    pub(crate) prefix: Key,
     pub(crate) branches: Vec<RaxNode<T>>,
 }
 
@@ -79,7 +82,7 @@ impl<T> RaxNode<T> {
             Cut::BothBegin => None,
             Cut::BothMiddle(m) => {
                 let left_value = None;
-                let left_prefix = Vec::from(&key[m..]);
+                let left_prefix = Key::from(&key[m..]);
                 let left_branches = vec![];
                 let left_node = RaxNode {
                     value: left_value,
@@ -106,12 +109,29 @@ impl<T> RaxNode<T> {
         }
     }
 
-    fn exists(&self, key: &[u8]) -> bool {
-        self.get(key).is_some()
+    fn remove_node(&mut self, key: &[u8]) -> Option<(T, bool)> {
+        match self.cut_key(key) {
+            Cut::Parent(_) => None,
+            Cut::Child(c) => {
+                let child_node = self.branches.iter_mut().enumerate().find_map(|(idx, n)| {
+                    n.remove_node(&key[c..])
+                        .map(|(v, should_delete)| (idx, v, should_delete))
+                });
+                if let Some((idx, _, should_delete)) = child_node.as_ref() {
+                    if *should_delete {
+                        self.branches.swap_remove(*idx);
+                    }
+                }
+                child_node.map(|s| (s.1, false))
+            }
+            Cut::BothBegin => None,
+            Cut::BothMiddle(_) => None,
+            Cut::BothEnd => self.value.take().map(|s| (s, true)),
+        }
     }
 
-    fn remove(&mut self, key: &[u8]) -> Option<T> {
-        unimplemented!()
+    fn exists(&self, key: &[u8]) -> bool {
+        self.get(key).is_some()
     }
 
     fn get(&self, key: &[u8]) -> Option<&T> {
@@ -152,8 +172,8 @@ impl<T> RaxNode<T> {
         }
     }
 
-    fn cut_key<'b>(&self, child_key: &'b [u8]) -> Cut {
-        let idx = self.prefix.iter().zip(child_key).position(|(l, r)| l != r);
+    fn cut_key<'b>(&self, key: &'b [u8]) -> Cut {
+        let idx = self.prefix.iter().zip(key).position(|(l, r)| l != r);
         if let Some(idx) = idx {
             if idx == 0 {
                 Cut::BothBegin
@@ -161,7 +181,7 @@ impl<T> RaxNode<T> {
                 Cut::BothMiddle(idx)
             }
         } else {
-            let (plen, clen) = (self.prefix.len(), child_key.len());
+            let (plen, clen) = (self.prefix.len(), key.len());
             match plen.cmp(&clen) {
                 std::cmp::Ordering::Less => Cut::Child(plen),
                 std::cmp::Ordering::Equal => Cut::BothEnd,
