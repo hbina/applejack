@@ -143,7 +143,7 @@ impl<T> RaxNode<T> {
             }
             Cut::BothBegin => None,
             Cut::BothMiddle(_) => None,
-            Cut::BothEnd => self.value.take().map(|s| (s, true)),
+            Cut::BothEnd => self.value.take().map(|s| (s, self.branches.is_empty())),
         }
     }
 
