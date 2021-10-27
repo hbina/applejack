@@ -10,8 +10,10 @@ edition = "2018"
 cargo-fuzz = true
 
 [dependencies]
-libfuzzer-sys = "0.3"
+libfuzzer-sys = "0.4.2"
 lazy_static = "1.4.0"
+rand = "0.8.4"
+arbitrary = { version = "1.0.2", features = ["derive"] }
 
 [dependencies.applejack]
 path = ".."
@@ -21,7 +23,13 @@ path = ".."
 members = ["."]
 
 [[bin]]
-name = "fuzz_target_1"
-path = "fuzz_targets/fuzz_target_1.rs"
+name = "insert_indefinitely"
+path = "fuzz_targets/insert_indefinitely.rs"
+test = false
+doc = false
+
+[[bin]]
+name = "run_sequence_of_insert_and_remove"
+path = "fuzz_targets/run_sequence_of_insert_and_remove.rs"
 test = false
 doc = false
