@@ -102,3 +102,35 @@ pub fn test_insert_empty() {
     root.remove(b"hello");
     assert!(root.exists(&[]));
 }
+
+#[derive(Debug)]
+enum Operation {
+    Insert(&'static [u8], u8),
+    Remove(&'static [u8]),
+}
+
+/// See https://github.com/hbina/applejack/pull/9
+#[test]
+pub fn test_only_delete_node_if_no_branches() {
+    let data = [
+        Operation::Insert(&[101, 212, 101, 101, 40, 83, 101, 101], 101),
+        Operation::Insert(&[101, 101, 101, 83, 83], 0),
+        Operation::Insert(&[101, 101], 233),
+        Operation::Insert(&[101, 101, 101, 101, 101], 212),
+        Operation::Remove(&[101, 101]),
+        Operation::Remove(&[101, 101, 101, 101, 101]),
+    ];
+    let mut table = std::collections::HashMap::new();
+    let mut rax = Rax::default();
+    for operation in &data {
+        match operation {
+            Operation::Insert(key, value) => {
+                rax.insert(key, *value);
+                table.insert(key, *value);
+            }
+            Operation::Remove(key) => {
+                assert_eq!(rax.remove(key), table.remove(key));
+            }
+        };
+    }
+}
