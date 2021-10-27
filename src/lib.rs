@@ -1,8 +1,10 @@
 use minivec::MiniVec;
 use smallvec::SmallVec;
 
-type Key = SmallVec<[u8; 16]>;
-type Branches<T> = MiniVec<RaxNode<T>>;
+// type Key = SmallVec<[u8; 16]>;
+// type Branches<T> = MiniVec<RaxNode<T>>;
+type Key = Vec<u8>;
+type Branches<T> = Vec<RaxNode<T>>;
 
 #[derive(PartialEq, Debug)]
 enum Cut {
@@ -15,12 +17,15 @@ enum Cut {
 
 #[derive(Default, Debug)]
 pub struct Rax<T> {
+    empty: Option<T>,
     branches: Branches<T>,
 }
 
 impl<T> Rax<T> {
     pub fn insert(&mut self, key: &[u8], value: T) {
-        if let Some(node) = self.branches.iter_mut().find_map(|n| n.insert_node(key)) {
+        if key.is_empty() {
+            self.empty = Some(value);
+        } else if let Some(node) = self.branches.iter_mut().find_map(|n| n.insert_node(key)) {
             node.value = Some(value);
         } else {
             self.branches.push(RaxNode {
@@ -32,21 +37,33 @@ impl<T> Rax<T> {
     }
 
     pub fn exists(&self, key: &[u8]) -> bool {
-        self.branches.iter().any(|n| n.exists(key))
+        (key.is_empty() && self.empty.is_some()) || self.branches.iter().any(|n| n.exists(key))
     }
 
     pub fn remove(&mut self, key: &[u8]) -> Option<T> {
-        self.branches
-            .iter_mut()
-            .find_map(|n| n.remove_node(key).map(|s| s.0))
+        if key.is_empty() {
+            self.empty.take()
+        } else {
+            self.branches
+                .iter_mut()
+                .find_map(|n| n.remove_node(key).map(|s| s.0))
+        }
     }
 
     pub fn get(&self, key: &[u8]) -> Option<&T> {
-        self.branches.iter().find_map(|n| n.get(key))
+        if key.is_empty() {
+            self.empty.as_ref()
+        } else {
+            self.branches.iter().find_map(|n| n.get(key))
+        }
     }
 
     pub fn get_mut(&mut self, key: &[u8]) -> Option<&mut T> {
-        self.branches.iter_mut().find_map(|n| n.get_mut(key))
+        if key.is_empty() {
+            self.empty.as_mut()
+        } else {
+            self.branches.iter_mut().find_map(|n| n.get_mut(key))
+        }
     }
 }
 
