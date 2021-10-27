@@ -1,10 +1,10 @@
 use minivec::MiniVec;
 use smallvec::SmallVec;
 
-// type Key = SmallVec<[u8; 16]>;
-// type Branches<T> = MiniVec<RaxNode<T>>;
-type Key = Vec<u8>;
-type Branches<T> = Vec<RaxNode<T>>;
+type Key = SmallVec<[u8; 16]>;
+type Branches<T> = MiniVec<RaxNode<T>>;
+// type Key = Vec<u8>;
+// type Branches<T> = Vec<RaxNode<T>>;
 
 #[derive(PartialEq, Debug)]
 enum Cut {
