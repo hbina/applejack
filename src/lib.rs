@@ -1,10 +1,5 @@
-use minivec::MiniVec;
-use smallvec::SmallVec;
-
-type Key = SmallVec<[u8; 16]>;
-type Branches<T> = MiniVec<RaxNode<T>>;
-// type Key = Vec<u8>;
-// type Branches<T> = Vec<RaxNode<T>>;
+type Key = Vec<u8>;
+type Branches<T> = Vec<RaxNode<T>>;
 
 #[derive(PartialEq, Debug)]
 enum Cut {
@@ -189,7 +184,7 @@ impl<T> RaxNode<T> {
         }
     }
 
-    fn cut_key<'b>(&self, key: &'b [u8]) -> Cut {
+    fn cut_key(&self, key: &'_ [u8]) -> Cut {
         let idx = self.prefix.iter().zip(key).position(|(l, r)| l != r);
         if let Some(idx) = idx {
             if idx == 0 {
