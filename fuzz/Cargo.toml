@@ -33,3 +33,9 @@ name = "run_sequence_of_insert_and_remove"
 path = "fuzz_targets/run_sequence_of_insert_and_remove.rs"
 test = false
 doc = false
+
+[[bin]]
+name = "should_be_equivalent_to_hashset"
+path = "fuzz_targets/should_be_equivalent_to_hashset.rs"
+test = false
+doc = false
