@@ -12,14 +12,14 @@ enum Cut {
 
 #[derive(Default, Debug)]
 pub struct Rax<T> {
-    empty: Option<T>,
+    first: Option<T>,
     branches: Branches<T>,
 }
 
 impl<T> Rax<T> {
     pub fn insert(&mut self, key: &[u8], value: T) {
         if key.is_empty() {
-            self.empty = Some(value);
+            self.first = Some(value);
         } else if let Some(node) = self.branches.iter_mut().find_map(|n| n.insert_node(key)) {
             node.value = Some(value);
         } else {
@@ -32,12 +32,12 @@ impl<T> Rax<T> {
     }
 
     pub fn exists(&self, key: &[u8]) -> bool {
-        (key.is_empty() && self.empty.is_some()) || self.branches.iter().any(|n| n.exists(key))
+        (key.is_empty() && self.first.is_some()) || self.branches.iter().any(|n| n.exists(key))
     }
 
     pub fn remove(&mut self, key: &[u8]) -> Option<T> {
         if key.is_empty() {
-            self.empty.take()
+            self.first.take()
         } else {
             self.branches
                 .iter_mut()
@@ -47,7 +47,7 @@ impl<T> Rax<T> {
 
     pub fn get(&self, key: &[u8]) -> Option<&T> {
         if key.is_empty() {
-            self.empty.as_ref()
+            self.first.as_ref()
         } else {
             self.branches.iter().find_map(|n| n.get(key))
         }
@@ -55,9 +55,17 @@ impl<T> Rax<T> {
 
     pub fn get_mut(&mut self, key: &[u8]) -> Option<&mut T> {
         if key.is_empty() {
-            self.empty.as_mut()
+            self.first.as_mut()
         } else {
             self.branches.iter_mut().find_map(|n| n.get_mut(key))
+        }
+    }
+
+    pub fn iter<'this>(&'this self) -> RaxIterator<'this, T> {
+        RaxIterator {
+            first: self.first.as_ref(),
+            nodes: self.branches.iter().collect(),
+            index: 0,
         }
     }
 }
@@ -198,6 +206,46 @@ impl<T> RaxNode<T> {
                 std::cmp::Ordering::Less => Cut::Child(plen),
                 std::cmp::Ordering::Equal => Cut::BothEnd,
                 std::cmp::Ordering::Greater => Cut::Parent(clen),
+            }
+        }
+    }
+}
+
+#[derive(Debug, Default)]
+pub struct RaxIterator<'this, T> {
+    first: Option<&'this T>,
+    nodes: Vec<&'this RaxNode<T>>,
+    index: usize,
+}
+
+impl<'this, T> Iterator for RaxIterator<'this, T>
+where
+    T: std::fmt::Debug,
+{
+    type Item = &'this T;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        if let Some(first) = self.first.take() {
+            Some(first)
+        } else if self.nodes.len() == 0 {
+            None
+        } else {
+            if self.index == self.nodes.len() {
+                self.nodes = self
+                    .nodes
+                    .drain(..)
+                    .flat_map(|s| s.branches.iter())
+                    .collect::<Vec<_>>();
+                self.index = 0;
+                self.next()
+            } else {
+                if let Some(v) = &self.nodes[self.index].value {
+                    self.index += 1;
+                    Some(v)
+                } else {
+                    self.index += 1;
+                    self.next()
+                }
             }
         }
     }

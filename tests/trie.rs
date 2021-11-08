@@ -134,3 +134,40 @@ pub fn test_only_delete_node_if_no_branches() {
         };
     }
 }
+
+#[test]
+pub fn test_iterating_rax_tree_width_first() {
+    let a = b"abc";
+    let b = b"abd";
+    let mut root = Rax::default();
+    root.insert(a, 10);
+    root.insert(b, 20);
+    assert!(root.iter().find(|s| **s == 10).is_some());
+    assert!(root.iter().find(|s| **s == 20).is_some());
+}
+
+#[test]
+pub fn test_collect_into_vec() {
+    let data = [
+        Operation::Insert(&[101, 212, 101, 101, 40, 83, 101, 101], 101),
+        Operation::Insert(&[101, 101, 101, 83, 83], 0),
+        Operation::Insert(&[101, 101], 233),
+        Operation::Insert(&[101, 101, 101, 101, 101], 212),
+        Operation::Remove(&[101, 101]),
+        Operation::Remove(&[101, 101, 101, 101, 101]),
+    ];
+    let mut table = std::collections::HashMap::new();
+    let mut rax = Rax::default();
+    for x in &data {
+        match x {
+            Operation::Insert(key, value) => {
+                rax.insert(key, *value);
+                table.insert(key, *value);
+            }
+            Operation::Remove(key) => {
+                assert_eq!(rax.remove(key), table.remove(key));
+            }
+        };
+    }
+    assert_eq!(rax.iter().map(|s| s).collect::<Vec<_>>().len(), table.len());
+}
